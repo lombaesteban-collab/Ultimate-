@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rutina Pro Celular - Alarma de Alta Visibilidad</title>
+    <style>
+        :root {
+            --bg: #090d16;
+            --card-bg: #162032;
+            --primary: #38bdf8;
+            --accent: #f59e0b;
+            --success: #22c55e;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #2a3b55;
+            --badge-bg: #0284c7;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 10px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        h1 {
+            color: var(--text);
+            font-size: 1.4rem;
+            margin-bottom: 2px;
+        }
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            margin-top: 0;
+        }
+        /* Cronómetro Global Fijo Arriba */
+        .global-timer {
+            background: var(--card-bg);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px -2px rgb(0 0 0 / 0.7);
+            text-align: center;
+            margin-bottom: 15px;
+            border: 2px solid var(--primary);
+            position: sticky;
+            top: 8px;
+            z-index: 100;
+            transition: background 0.3s;
+        }
+        .global-timer.alarm-ringing {
+            background: #7f1d1d !important;
+            border-color: #ef4444 !important;
+            animation: pulse-bg 0.8s infinite alternate;
+        }
+        @keyframes pulse-bg {
+            0% { transform: scale(1); box-shadow: 0 0 15px #ef4444; }
+            100% { transform: scale(1.02); box-shadow: 0 0 30px #ef4444; }
+        }
+        .global-timer span {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .global-timer.alarm-ringing span {
+            color: #fef08a;
+        }
+        .timer-status {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .global-timer.alarm-ringing .timer-status {
+            color: #fca5a5;
+            font-size: 1.1rem;
+        }
+        .timer-buttons {
+            margin-top: 8px;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+        /* Pestañas de días */
+        .tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-btn {
+            background-color: var(--border);
+            border: none;
+            padding: 9px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--text-muted);
+            white-space: nowrap;
+            font-size: 0.85rem;
+        }
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: #090d16;
+        }
+        /* Contenido del día */
+        .day-content {
+            display: none;
+            background: var(--card-bg);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+            border: 1px solid var(--border);
+        }
+        .day-content.active {
+            display: block;
+        }
+        h2 {
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 6px;
+            color: var(--text);
+            margin-top: 0;
+            font-size: 1.05rem;
+        }
+        .exercise-item {
+            display: flex;
+            flex-direction: column;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 6px;
+            transition: background 0.3s;
+        }
+        .exercise-item.completed {
+            background-color: rgba(34, 197, 94, 0.08);
+            border-left: 4px solid var(--success);
+            padding-left: 8px;
+            border-radius: 6px;
+        }
+        .exercise-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .exercise-info {
+            flex-grow: 1;
+        }
+        .exercise-name {
+            font-weight: bold;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+        .exercise-details {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .exercise-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            margin-top: 2px;
+        }
+        .set-counter {
+            background-color: #2a3b55;
+            color: var(--text);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px solid #3b5278;
+            user-select: none;
+        }
+        .btn-timer {
+            background-color: var(--badge-bg);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: bold;
+            flex-grow: 1;
+            text-align: center;
+        }
+        .btn-timer:active {
+            opacity: 0.8;
+        }
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--success);
+            margin-top: 2px;
+        }
+        .warmup-box {
+            background-color: #1e1b4b;
+            border-left: 4px solid var(--accent);
+            padding: 10px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 12px;
+            border: 1px solid #312e81;
+            font-size: 0.85rem;
+        }
+        .warmup-box h3 {
+            margin: 0 0 4px 0;
+            color: #fde047;
+            font-size: 0.9rem;
+        }
+        .warmup-box ul {
+            margin: 0;
+            padding-left: 16px;
+            color: #e2e8f0;
+        }
+        .btn-stop {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-reset {
+            background-color: #475569;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Rutina Pro Celular</h1>
+        <p class="subtitle">2 Mancuernas (5kg) + Banco | Alarma Visual, Sonora y Vibración</p>
+    </header>
+
+    <!-- Cronómetro Fijo Arriba -->
+    <div class="global-timer" id="global-timer-box">
+        <div class="timer-status" id="timer-label">Listo para entrenar</div>
+        <span id="timer">00:00</span>
+        <div class="timer-buttons">
+            <button class="btn-stop" onclick="stopTimer()">Detener Alarma</button>
+            <button class="btn-reset" onclick="resetAllProgress()">Reiniciar Día</button>
+        </div>
+    </div>
+
+    <!-- Pestañas de Días -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openDay(event, 'dia1')">Martes</button>
+        <button class="tab-btn" onclick="openDay(event, 'dia2')">Jueves</button>
+        <button class="tab-btn" onclick="openDay(event, 'dia3')">Viernes</button>
+        <button class="tab-btn" onclick="openDay(event, 'dia4')">Sábado</button>
+    </div>
+
+    <!-- CALENTAMIENTO -->
+    <div class="warmup-box">
+        <h3>Calentamiento previo obligatorio</h3>
+        <ul>
+            <li><strong>Movilidad (5 min):</strong> Muñecas, hombros y caderas.</li>
+            <li><strong>Flexiones Mike Tyson:</strong> 1-2 series de 5-8 reps.</li>
+        </ul>
+    </div>
+
+    <!-- DÍA 1 -->
+    <div id="dia1" class="day-content active">
+        <h2>Martes: Empuje + Espalda Alta + Antebrazos</h2>
+        
+        <div class="exercise-item" id="ex-1-1">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-1-1" onchange="manualCheckbox('1-1', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">1. Flexiones declinadas o en banco</div>
+                    <div class="exercise-details">4 series x 10-15 reps (Bajada en 3s controlados)</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-1-1" onclick="manualSet('1-1', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(120, 'Flexiones (2m)', '1-1', 4)">⏱️ Descansar 2 Min</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-1-2">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-1-2" onchange="manualCheckbox('1-2', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">2. Press de banca plano con mancuernas</div>
+                    <div class="exercise-details">4 series x 12-15 reps (Fase excéntrica lenta)</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-1-2" onclick="manualSet('1-2', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(120, 'Press Banca (2m)', '1-2', 4)">⏱️ Descansar 2 Min</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-1-3">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-1-3" onchange="manualCheckbox('1-3', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">3. Press militar sentado en banco</div>
+                    <div class="exercise-details">4 series x 10-12 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-1-3" onclick="manualSet('1-3', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(120, 'Press Militar (2m)', '1-3', 4)">⏱️ Descansar 2 Min</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-1-4">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-1-4" onchange="manualCheckbox('1-4', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">4. Remo inclinado a una mano con banco</div>
+                    <div class="exercise-details">4 series x 12 repeticiones por lado</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-1-4" onclick="manualSet('1-4', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(90, 'Remo 1 Mano (90s)', '1-4', 4)">⏱️ Descansar 90s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-1-5">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-1-5" onchange="manualCheckbox('1-5', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">5. Elevaciones laterales con mancuernas</div>
+                    <div class="exercise-details">4 series x 15 reps (Pico de contracción 1s)</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-1-5" onclick="manualSet('1-5', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(60, 'Elev. Laterales (60s)', '1-5', 4)">⏱️ Descansar 60s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-1-6">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-1-6" onchange="manualCheckbox('1-6', 3)">
+                <div class="exercise-info">
+                    <div class="exercise-name">6. Curl de muñeca en supinación</div>
+                    <div class="exercise-details">3 series x 20 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-1-6" onclick="manualSet('1-6', 3)">Serie: 0/3</div>
+                <button class="btn-timer" onclick="startTimer(45, 'Antebrazos (45s)', '1-6', 3)">⏱️ Descansar 45s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-1-7">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-1-7" onchange="manualCheckbox('1-7', 3)">
+                <div class="exercise-info">
+                    <div class="exercise-name">7. Curl de muñeca en pronación</div>
+                    <div class="exercise-details">3 series x 15-20 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-1-7" onclick="manualSet('1-7', 3)">Serie: 0/3</div>
+                <button class="btn-timer" onclick="startTimer(45, 'Antebrazos (45s)', '1-7', 3)">⏱️ Descansar 45s</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DÍA 2 -->
+    <div id="dia2" class="day-content">
+        <h2>Jueves: Cuádriceps + Gemelos + Abdomen</h2>
+        
+        <div class="exercise-item" id="ex-2-1">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-2-1" onchange="manualCheckbox('2-1', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">1. Sentadillas Búlgaras con mancuernas</div>
+                    <div class="exercise-details">4 series x 10-12 reps (Bajada controlada 3s)</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-2-1" onclick="manualSet('2-1', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(180, 'Búlgaras (3m)', '2-1', 4)">⏱️ Descansar 3 Min</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-2-2">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-2-2" onchange="manualCheckbox('2-2', 3)">
+                <div class="exercise-info">
+                    <div class="exercise-name">2. Zancadas hacia atrás con mancuernas</div>
+                    <div class="exercise-details">3 series x 12 pasos por pierna</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-2-2" onclick="manualSet('2-2', 3)">Serie: 0/3</div>
+                <button class="btn-timer" onclick="startTimer(120, 'Zancadas (2m)', '2-2', 3)">⏱️ Descansar 2 Min</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-2-3">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-2-3" onchange="manualCheckbox('2-3', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">3. Sentadilla Goblet con mancuerna</div>
+                    <div class="exercise-details">4 series x 15-20 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-2-3" onclick="manualSet('2-3', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(120, 'Goblet Squat (2m)', '2-3', 4)">⏱️ Descansar 2 Min</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-2-4">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-2-4" onchange="manualCheckbox('2-4', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">4. Puente de glúteos en suelo</div>
+                    <div class="exercise-details">4 series x 15 reps (Apretar arriba 2s)</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-2-4" onclick="manualSet('2-4', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(90, 'Glúteos (90s)', '2-4', 4)">⏱️ Descansar 90s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-2-5">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-2-5" onchange="manualCheckbox('2-5', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">5. Elevaciones de talones de pie</div>
+                    <div class="exercise-details">4 series x 15-20 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-2-5" onclick="manualSet('2-5', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(60, 'Gemelos (60s)', '2-5', 4)">⏱️ Descansar 60s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-2-6">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-2-6" onchange="manualCheckbox('2-6', 3)">
+                <div class="exercise-info">
+                    <div class="exercise-name">6. Plancha abdominal con toque de hombros</div>
+                    <div class="exercise-details">3 series x 40-50 segundos</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-2-6" onclick="manualSet('2-6', 3)">Serie: 0/3</div>
+                <button class="btn-timer" onclick="startTimer(60, 'Plancha (60s)', '2-6', 3)">⏱️ Descansar 60s</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DÍA 3 -->
+    <div id="dia3" class="day-content">
+        <h2>Viernes: Tracción + Hombros + Antebrazos</h2>
+        
+        <div class="exercise-item" id="ex-3-1">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-3-1" onchange="manualCheckbox('3-1', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">1. Remo inclinado con dos mancuernas</div>
+                    <div class="exercise-details">4 series x 12-15 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-3-1" onclick="manualSet('3-1', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(120, 'Remo Doble (2m)', '3-1', 4)">⏱️ Descansar 2 Min</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-3-2">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-3-2" onchange="manualCheckbox('3-2', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">2. Pullover con mancuerna en banco</div>
+                    <div class="exercise-details">4 series x 12 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-3-2" onclick="manualSet('3-2', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(90, 'Pullover (90s)', '3-2', 4)">⏱️ Descansar 90s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-3-3">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-3-3" onchange="manualCheckbox('3-3', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">3. Pájaros inclinados (hombro posterior)</div>
+                    <div class="exercise-details">4 series x 15 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-3-3" onclick="manualSet('3-3', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(60, 'Pájaros (60s)', '3-3', 4)">⏱️ Descansar 60s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-3-4">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-3-4" onchange="manualCheckbox('3-4', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">4. Curl de bíceps tipo martillo</div>
+                    <div class="exercise-details">4 series x 12 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-3-4" onclick="manualSet('3-4', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(90, 'Bíceps Martillo (90s)', '3-4', 4)">⏱️ Descansar 90s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-3-5">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-3-5" onchange="manualCheckbox('3-5', 3)">
+                <div class="exercise-info">
+                    <div class="exercise-name">5. Curl de bíceps supino en banco a 45°</div>
+                    <div class="exercise-details">3 series x 10-12 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-3-5" onclick="manualSet('3-5', 3)">Serie: 0/3</div>
+                <button class="btn-timer" onclick="startTimer(90, 'Curl Banco (90s)', '3-5', 3)">⏱️ Descansar 90s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-3-6">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-3-6" onchange="manualCheckbox('3-6', 3)">
+                <div class="exercise-info">
+                    <div class="exercise-name">6. Paseo del Granjero (Antebrazos)</div>
+                    <div class="exercise-details">3 series x 45-60 segundos caminando</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-3-6" onclick="manualSet('3-6', 3)">Serie: 0/3</div>
+                <button class="btn-timer" onclick="startTimer(60, 'Granjero (60s)', '3-6', 3)">⏱️ Descansar 60s</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DÍA 4 -->
+    <div id="dia4" class="day-content">
+        <h2>Sábado: Isquios / Glúteo Enfocado + Accesorios</h2>
+        
+        <div class="exercise-item" id="ex-4-1">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-4-1" onchange="manualCheckbox('4-1', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">1. Peso muerto rumano con mancuernas</div>
+                    <div class="exercise-details">4 series x 12-15 reps (Estiramiento intenso atrás)</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-4-1" onclick="manualSet('4-1', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(120, 'Peso Muerto (2m)', '4-1', 4)">⏱️ Descansar 2 Min</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-4-2">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-4-2" onchange="manualCheckbox('4-2', 3)">
+                <div class="exercise-info">
+                    <div class="exercise-name">2. Puente de glúteos a una pierna</div>
+                    <div class="exercise-details">3 series x 12 reps por pierna</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-4-2" onclick="manualSet('4-2', 3)">Serie: 0/3</div>
+                <button class="btn-timer" onclick="startTimer(90, 'Glúteo 1P (90s)', '4-2', 3)">⏱️ Descansar 90s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-4-3">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-4-3" onchange="manualCheckbox('4-3', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">3. Extensiones de tríceps acostado</div>
+                    <div class="exercise-details">4 series x 12 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-4-3" onclick="manualSet('4-3', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(90, 'Tríceps (90s)', '4-3', 4)">⏱️ Descansar 90s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-4-4">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-4-4" onchange="manualCheckbox('4-4', 4)">
+                <div class="exercise-info">
+                    <div class="exercise-name">4. Elevaciones de talones sentado (Sóleo)</div>
+                    <div class="exercise-details">4 series x 20 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-4-4" onclick="manualSet('4-4', 4)">Serie: 0/4</div>
+                <button class="btn-timer" onclick="startTimer(60, 'Gemelos Sentado (60s)', '4-4', 4)">⏱️ Descansar 60s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-4-5">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-4-5" onchange="manualCheckbox('4-5', 3)">
+                <div class="exercise-info">
+                    <div class="exercise-name">5. Elevaciones de piernas acostado</div>
+                    <div class="exercise-details">3 series x 15-20 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-4-5" onclick="manualSet('4-5', 3)">Serie: 0/3</div>
+                <button class="btn-timer" onclick="startTimer(60, 'Abdomen Inf (60s)', '4-5', 3)">⏱️ Descansar 60s</button>
+            </div>
+        </div>
+
+        <div class="exercise-item" id="ex-4-6">
+            <div class="exercise-top">
+                <input type="checkbox" id="chk-4-6" onchange="manualCheckbox('4-6', 3)">
+                <div class="exercise-info">
+                    <div class="exercise-name">6. Encogimientos abdominales (Crunches)</div>
+                    <div class="exercise-details">3 series x 15-20 repeticiones</div>
+                </div>
+            </div>
+            <div class="exercise-controls">
+                <div class="set-counter" id="set-4-6" onclick="manualSet('4-6', 3)">Serie: 0/3</div>
+                <button class="btn-timer" onclick="startTimer(60, 'Crunches (60s)', '4-6', 3)">⏱️ Descansar 60s</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Sistema de Pestañas
+    function openDay(evt, dayId) {
+        let contents = document.getElementsByClassName("day-content");
+        for (let i = 0; i < contents.length; i++) {
+            contents[i].classList.remove("active");
+        }
+        let buttons = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < buttons.length; i++) {
+            buttons[i].classList.remove("active");
+        }
+        document.getElementById(dayId).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
+
+    // Mantener la pantalla encendida (Wake Lock API)
+    let wakeLock = null;
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLock = await navigator.wakeLock.request('screen');
+            }
+        } catch (err) {
+            console.log("Wake Lock error:", err);
+        }
+    }
+    window.addEventListener('visibilitychange', async () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') {
+            await requestWakeLock();
+        }
+    });
+    requestWakeLock();
+
+    // Sistema de Alarma Avanzado: Alarma en Bucle (Suena y vibra repetidamente hasta que la detengas)
+    let audioCtx = null;
+    let alarmInterval = null;
+    let isRinging = false;
+
+    function startIntenseAlarm() {
+        if (isRinging) return;
+        isRinging = true;
+
+        // Añadir animación visual fuerte arriba (pantalla roja parpadeante)
+        const timerBox = document.getElementById('global-timer-box');
+        timerBox.classList.add('alarm-ringing');
+
+        // Función que ejecuta el pitido y la vibración en bucle
+        function ringCycle() {
+            if (!isRinging) return;
+
+            // 1. Sonido Multi-Tono penetrante (Sobresale sobre la música)
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                let now = audioCtx.currentTime;
+                
+                // Doble bip rápido agudo
+                [0, 0.2].forEach(delay => {
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    osc.type = 'triangle'; // Tono más punzante y estridente que la onda sinusoidal
+                    osc.frequency.setValueAtTime(1046.5, now + delay); // Nota Do aguda (C6)
+                    gain.gain.setValueAtTime(0.5, now + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.15);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + delay);
+                    osc.stop(now + delay + 0.15);
+                });
+            } catch (e) {
+                console.log("Audio error:", e);
+            }
+
+            // 2. Patrón de vibración continuo e intenso en el celular
+            if ("vibrate" in navigator) {
+                navigator.vibrate([400, 200, 400, 200, 600]);
+            }
+        }
+
+        // Ejecutar de inmediato y repetir cada 1.5 segundos hasta que el usuario toque "Detener Alarma"
+        ringCycle();
+        alarmInterval = setInterval(ringCycle, 1500);
+    }
+
+    function stopTimer() {
+        clearInterval(countdown);
+        isRinging = false;
+        if (alarmInterval) {
+            clearInterval(alarmInterval);
+            alarmInterval = null;
+        }
+
+        // Remover estilos de alarma visual
+        const timerBox = document.getElementById('global-timer-box');
+        timerBox.classList.remove('alarm-ringing');
+        
+        timerLabel.textContent = "Alarma detenida / Pausa";
+        timerDisplay.textContent = "00:00";
+        
+        if ("vibrate" in navigator) navigator.vibrate(0); // Cortar vibración en seco
+    }
+
+    // Variables de control del Temporizador
+    let countdown;
+    const timerDisplay = document.getElementById('timer');
+    const timerLabel = document.getElementById('timer-label');
+
+    function startTimer(seconds, exerciseName, exerciseId, maxSets) {
+        // Si hay una alarma sonando de antes, la cortamos al iniciar otro
+        stopTimer();
+        
+        let timeLeft = seconds;
+        timerLabel.textContent = `Descanso: ${exerciseName}`;
+        updateDisplay(timeLeft);
+        
+        countdown = setInterval(() => {
+            timeLeft--;
+            updateDisplay(timeLeft);
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                timerLabel.textContent = "🚨 ¡TIEMPO TERMINADO! Siguiente Serie 🚨";
+                timerDisplay.textContent = "00:00";
+                
+                // Activar alarma pesada (sonido continuo + vibración pesada + pantalla roja parpadeante)
+                startIntenseAlarm();
+                
+                // Automatización: Avanza la serie solo
+                autoAdvanceSet(exerciseId, maxSets);
+            }
+        }, 1000);
+    }
+
+    function updateDisplay(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // Automatización de series con LocalStorage (Memoria)
+    function autoAdvanceSet(exerciseId, maxSets) {
+        let counterEl = document.getElementById(`set-${exerciseId}`);
+        let text = counterEl.textContent;
+        let currentSet = parseInt(text.split('/')[0].replace('Serie: ', '')) || 0;
+        
+        if (currentSet < maxSets) {
+            currentSet++;
+            counterEl.textContent = `Serie: ${currentSet}/${maxSets}`;
+            
+            if (currentSet === maxSets) {
+                let checkbox = document.getElementById(`chk-${exerciseId}`);
+                let itemContainer = document.getElementById(`ex-${exerciseId}`);
+                checkbox.checked = true;
+                itemContainer.classList.add('completed');
+            }
+            saveProgressToMemory();
+        }
+    }
+
+    function manualSet(exerciseId, maxSets) {
+        let counterEl = document.getElementById(`set-${exerciseId}`);
+        let checkbox = document.getElementById(`chk-${exerciseId}`);
+        let itemContainer = document.getElementById(`ex-${exerciseId}`);
+        
+        let text = counterEl.textContent;
+        let currentSet = parseInt(text.split('/')[0].replace('Serie: ', '')) || 0;
+        
+        currentSet++;
+        if (currentSet > maxSets) {
+            currentSet = 0;
+        }
+        
+        counterEl.textContent = `Serie: ${currentSet}/${maxSets}`;
+        
+        if (currentSet === maxSets) {
+            checkbox.checked = true;
+            itemContainer.classList.add('completed');
+        } else {
+            checkbox.checked = false;
+            itemContainer.classList.remove('completed');
+        }
+        saveProgressToMemory();
+    }
+
+    function manualCheckbox(exerciseId, maxSets) {
+        let checkbox = document.getElementById(`chk-${exerciseId}`);
+        let counterEl = document.getElementById(`set-${exerciseId}`);
+        let itemContainer = document.getElementById(`ex-${exerciseId}`);
+
+        if (checkbox.checked) {
+            counterEl.textContent = `Serie: ${maxSets}/${maxSets}`;
+            itemContainer.classList.add('completed');
+        } else {
+            counterEl.textContent = `Serie: 0/${maxSets}`;
+            itemContainer.classList.remove('completed');
+        }
+        saveProgressToMemory();
+    }
+
+    // Guardar en el Celular (LocalStorage)
+    function saveProgressToMemory() {
+        let data = {};
+        let items = document.querySelectorAll('.exercise-item');
+        items.forEach(item => {
+            let id = item.id.replace('ex-', '');
+            let counterText = document.getElementById(`set-${id}`).textContent;
+            let isChecked = document.getElementById(`chk-${id}`).checked;
+            data[id] = { counter: counterText, checked: isChecked };
+        });
+        localStorage.setItem('rutina_pro_data_v2', JSON.stringify(data));
+    }
+
+    // Cargar de la Memoria al abrir la página
+    function loadProgressFromMemory() {
+        let saved = localStorage.getItem('rutina_pro_data_v2');
+        if (saved) {
+            let data = JSON.parse(saved);
+            for (let id in data) {
+                let counterEl = document.getElementById(`set-${id}`);
+                let checkbox = document.getElementById(`chk-${id}`);
+                let itemContainer = document.getElementById(`ex-${id}`);
+                if (counterEl && checkbox && itemContainer) {
+                    counterEl.textContent = data[id].counter;
+                    checkbox.checked = data[id].checked;
+                    if (data[id].checked) {
+                        itemContainer.classList.add('completed');
+                    } else {
+                        itemContainer.classList.remove('completed');
+                    }
+                }
+            }
+        }
+    }
+
+    function resetAllProgress() {
+        if (confirm("¿Quieres reiniciar el progreso de todos los ejercicios de este día?")) {
+            localStorage.removeItem('rutina_pro_data_v2');
+            location.reload();
+        }
+    }
+
+    window.onload = function() {
+        loadProgressFromMemory();
+    };
+</script>
+
+</body>
+</html>
